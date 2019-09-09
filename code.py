@@ -28,6 +28,7 @@ from sklearn.preprocessing import LabelEncoder
 # Fixed parameters 
 train_data_dir = 'D:/CNN/dogs-vs-cats/train'
 validation_data_dir = 'D:/CNN/dogs-vs-cats/validation'
+test_data_dir = 'D:/CNN/dogs-vs-cats/test'
 nb_train_samples = 22000
 nb_validation_samples = 3000
 img_width = 224
@@ -93,6 +94,12 @@ test_datagen = ImageDataGenerator(rescale=1./255)
 # this is a similar generator, for validation data
 validation_generator = test_datagen.flow_from_directory(
         validation_data_dir,
+        target_size=(img_height, img_width),
+        batch_size=batch_size,
+        class_mode='binary')
+# Define the test generator
+test_generator = test_datagen.flow_from_directory(
+        test_data_dir,
         target_size=(img_height, img_width),
         batch_size=batch_size,
         class_mode='binary')
@@ -173,8 +180,68 @@ model.fit_generator(
         epochs=50,
         validation_data=validation_generator,
         validation_steps=94 // batch_size)
-model.save_weights('D:/CNN/dogs-vs-cats/pretrained_try.h5')
 
+#Save Model Weights, Architecture, Optimizer conf
+from keras.models import load_model
+model.save('D:/CNN/dogs-vs-cats/my_model.h5')  
 
+#Save Model Weights, Architecture, Optimizer conf - Full model load
+#model = load_model('D:/CNN/dogs-vs-cats/my_model.h5')
 
+# Save Weights
+#model.save_weights('D:/CNN/dogs-vs-cats/pretrained_try.h5')
 
+##Save Architecture
+# save as JSON
+#json_string = model.to_json()
+
+#Load saved Json architecture
+#from keras.models import model_from_json
+#model = model_from_json(json_string)
+
+# save as YAML
+#yaml_string = model.to_yaml()
+
+#Load saved YAML architecture
+#from keras.models import model_from_yaml
+#model = model_from_yaml(yaml_string)
+##########################################################################################################
+###############      Model Test       ####################################################################
+
+from keras.models import load_model
+from keras.models import model_from_json
+
+#model = model_from_json(json_string)
+
+#Load full model 
+model = load_model('D:/CNN/dogs-vs-cats/my_model.h5')
+
+#define the test generator transformations
+test_datagen = ImageDataGenerator(rescale=1./255)
+
+test_generator = test_datagen.flow_from_directory(
+        test_data_dir,
+        target_size=(img_height, img_width),
+        batch_size=1,
+        shuffle=False,#this is important to map with filenames
+        class_mode='binary')
+
+#Predict on test set
+filenames = test_generator.filenames
+
+nb_test_samples = len(filenames)
+#Get prediction probabilities for each image - 50 in this case
+predict = model.predict_generator(test_generator,steps = nb_test_samples)
+#Get accuracy of the classification
+scores = model.evaluate_generator(test_generator,steps = nb_test_samples) #50 testing images
+print("Accuracy = ", scores[1])
+
+#combine the filenames and predictions to a dataframe for analysis
+
+import numpy as np
+output_data = pd.DataFrame(np.column_stack([filenames, predict]), 
+                               columns=['Filename', 'Probability'])
+output_data.head()
+
+##############################################################################################################
+##############################################################################################################
